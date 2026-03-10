@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voltage Monitoring Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1 class="glow-text">Voltage Monitoring Dashboard</h1>
+            <p class="subtitle">Live web-based monitoring</p>
+        </header>
+
+        <main>
+            <div class="cards-wrapper">
+                <div class="card stat-card">
+                    <div class="card-content">
+                        <h2>Voltage</h2>
+                        <div class="value-container">
+                            <span id="currentVoltage" class="value">0.00</span>
+                            <span class="unit">V</span>
+                        </div>
+                    </div>
+                    <div class="glow-effect"></div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-content">
+                        <h2>Total Generated Voltage</h2>
+                        <div class="value-container">
+                            <span id="totalVoltage" class="value">0.00</span>
+                            <span class="unit">V</span>
+                        </div>
+                    </div>
+                    <div class="glow-effect"></div>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2>Live Voltage Graph</h2>
+                    <div class="status-indicator">
+                        <span id="connectionDot" class="dot"></span>
+                        <span id="connectionStatus">Connecting...</span>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="voltageChart"></canvas>
+                </div>
+                
+                <div class="card-footer">
+                    <p id="footerStatusText">Initializing connection to ESP32...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Open this page from any device on the same local network</p>
+            <div class="controls">
+                <label for="espIpInput">ESP32 IP:</label>
+                <input type="text" id="espIpInput" value="192.168.1.100" placeholder="e.g. 192.168.1.100">
+                <button id="updateIpBtn">Update</button>
+                <button id="toggleSimBtn" class="sim-btn">Toggle Simulation</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
