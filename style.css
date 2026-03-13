@@ -126,12 +126,12 @@ h1 {
 
 /* Top Stats Wrapper */
 .cards-wrapper {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
 }
 
 .stat-card {
-    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -346,7 +346,7 @@ footer {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .cards-wrapper {
-        flex-direction: column;
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .chart-container {

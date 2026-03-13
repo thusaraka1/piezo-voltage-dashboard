@@ -1,8 +1,12 @@
+
+
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const chartCanvas = document.getElementById('voltageChart');
     const currentVoltageEl = document.getElementById('currentVoltage');
+    const peakVoltageEl = document.getElementById('peakVoltage');
     const totalVoltageEl = document.getElementById('totalVoltage');
+    const generatedTimeEl = document.getElementById('generatedTime');
     const connectionDot = document.getElementById('connectionDot');
     const connectionStatus = document.getElementById('connectionStatus');
     const footerStatusText = document.getElementById('footerStatusText');
@@ -10,15 +14,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateIpBtn = document.getElementById('updateIpBtn');
     const toggleSimBtn = document.getElementById('toggleSimBtn');
 
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyA7z7EDnoC3ah7vgo5QtavDHbKVEkljwDU",
+        authDomain: "shawishwa-c8795.firebaseapp.com",
+        databaseURL: "https://shawishwa-c8795-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "shawishwa-c8795",
+        storageBucket: "shawishwa-c8795.firebasestorage.app",
+        messagingSenderId: "672875113522",
+        appId: "1:672875113522:web:3363092599e9c92534602b",
+        measurementId: "G-JRF44SSZ7Q"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
     // State Variables
-    let espIp = espIpInput.value;
-    let isSimulationMode = true;
+    let isSimulationMode = false; // Default to live Firebase mode
     let fetchInterval = null;
     let fallbackToSimTimeout = null;
     let totalGeneratedVoltage = 0; // For simulation
+    let peakVoltage = 0;
+    let generatedTime = 0;
 
     // Chart Configuration
     const maxDataPoints = 30;
+
+    function getDynamicScale(values) {
+        const validValues = values.filter((value) => Number.isFinite(value));
+
+        if (validValues.length === 0) {
+            return { min: 0, max: 1 };
+        }
+
+        const minVal = Math.min(...validValues);
+        const maxVal = Math.max(...validValues);
+
+        if (maxVal === minVal) {
+            const baseline = Math.max(Math.abs(maxVal) * 0.2, 0.1);
+            return {
+                min: Math.max(0, minVal - baseline),
+                max: maxVal + baseline
+            };
+        }
+
+        const range = maxVal - minVal;
+        const padding = Math.max(range * 0.2, 0.05);
+
+        return {
+            min: Math.max(0, minVal - padding),
+            max: maxVal + padding
+        };
+    }
 
     // Gradient for chart area
     const ctx = chartCanvas.getContext('2d');
@@ -65,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayColors: false,
                     callbacks: {
                         label: function (context) {
-                            return `${context.parsed.y.toFixed(2)} V`;
+                            return `${context.parsed.y.toFixed(3)} V`;
                         }
                     }
                 }
@@ -91,11 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             family: "'Inter', sans-serif"
                         },
                         callback: function (value) {
-                            return value + ' V';
+                            return Number(value).toFixed(value < 1 ? 3 : 2) + ' V';
                         }
                     },
-                    suggestedMin: 0,
-                    suggestedMax: 50
+                    min: 0,
+                    max: 1
                 }
             },
             interaction: {
@@ -112,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setConnectionStatus(status, message) {
         connectionDot.className = 'dot';
         footerStatusText.className = '';
+        const espIp = (espIpInput?.value || '').trim() || 'ESP32';
 
         if (status === 'connected') {
             connectionDot.classList.add('connected');
@@ -129,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Connecting
             connectionStatus.textContent = 'Connecting...';
             connectionStatus.style.color = 'var(--warning-color)';
-            footerStatusText.textContent = `Attempting to connect to ${espIp}...`;
+            footerStatusText.textContent = `Attempting to connect to Live Database...`;
         }
     }
 
@@ -146,11 +195,15 @@ document.addEventListener('DOMContentLoaded', () => {
             voltageChart.data.datasets[0].data.shift();
         }
 
+        const { min, max } = getDynamicScale(voltageChart.data.datasets[0].data);
+        voltageChart.options.scales.y.min = min;
+        voltageChart.options.scales.y.max = max;
+
         voltageChart.update('none'); // Update without animation for smooth flow
     }
 
     // Animate value transition
-    function animateValue(element, start, end, duration) {
+    function animateValue(element, start, end, duration, decimals = 3) {
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
@@ -160,73 +213,69 @@ document.addEventListener('DOMContentLoaded', () => {
             const easeProgress = progress * (2 - progress);
             const currentObj = start + easeProgress * (end - start);
 
-            element.textContent = currentObj.toFixed(2);
+            element.textContent = currentObj.toFixed(decimals);
 
             if (progress < 1) {
                 window.requestAnimationFrame(step);
             } else {
-                element.textContent = end.toFixed(2);
+                element.textContent = end.toFixed(decimals);
             }
         };
         window.requestAnimationFrame(step);
     }
 
     // Process new data
-    function processData(currentVolts, totalVolts) {
+    function processData(currentVolts, totalVolts, gTime) {
         const oldCurrent = parseFloat(currentVoltageEl.textContent) || 0;
+        const oldPeak = parseFloat(peakVoltageEl.textContent) || 0;
         const oldTotal = parseFloat(totalVoltageEl.textContent) || 0;
+        const oldTime = parseFloat(generatedTimeEl.textContent) || 0;
 
-        animateValue(currentVoltageEl, oldCurrent, currentVolts, 500);
-        animateValue(totalVoltageEl, oldTotal, totalVolts, 500);
+        if (currentVolts > peakVoltage) {
+            peakVoltage = currentVolts;
+        }
+
+        animateValue(currentVoltageEl, oldCurrent, currentVolts, 500, 3);
+        animateValue(peakVoltageEl, oldPeak, peakVoltage, 500, 3);
+        animateValue(totalVoltageEl, oldTotal, totalVolts, 500, 3);
+        animateValue(generatedTimeEl, oldTime, gTime, 500, 0);
 
         updateChart(currentVolts);
     }
 
-    // Fetch data from ESP32
-    async function fetchEspData() {
+    // Fetch data from Firebase Realtime Database
+    function setupFirebaseListeners() {
         if (isSimulationMode) return;
 
-        try {
-            // Assume the ESP32 hosts a simple JSON endpoint at /data
-            // Format expected: {"voltage": 12.4, "totalVoltage": 45.2}
+        setConnectionStatus('connecting');
 
-            // Add a timeout to the fetch request
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const piezoRef = database.ref('piezo');
 
-            const response = await fetch(`http://${espIp}/data`, {
-                method: 'GET',
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json'
+        piezoRef.on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+
+                setConnectionStatus('connected');
+
+                const v = parseFloat(data.currentVoltage) || 0;
+                const tv = parseFloat(data.totalGeneratedVoltage) || 0;
+
+                // Allow peak voltage to be received from DB or calculated locally as fallback
+                const dbPeak = parseFloat(data.peakVoltage) || 0;
+                if (dbPeak > peakVoltage) {
+                    peakVoltage = dbPeak;
                 }
-            });
 
-            clearTimeout(timeoutId);
+                const gt = parseFloat(data.generatedTime) || generatedTime;
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                processData(v, tv, gt);
+            } else {
+                setConnectionStatus('disconnected', 'No Data Found in Database');
             }
-
-            const data = await response.json();
-
-            // If we successfully get data, clear any pending fallback and set connected
-            clearTimeout(fallbackToSimTimeout);
-            setConnectionStatus('connected');
-
-            // Allow flexibility in field names
-            const v = data.voltage || data.v || data.value || 0;
-            const tv = data.totalVoltage || data.total || data.tv || data.sum || 0;
-
-            processData(v, tv);
-
-        } catch (error) {
-            console.error('Error fetching ESP32 data:', error);
-            setConnectionStatus('disconnected');
-
-            // After 5 consecutive failures, maybe prompt to simulate?
-            // For now, leave it disconnected. The user can manually click 'Toggle Simulation'
-        }
+        }, (error) => {
+            console.error('Error fetching Firebase data:', error);
+            setConnectionStatus('disconnected', 'Database Connection Error');
+        });
     }
 
     // Generate Simulation Data
@@ -251,9 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
             simVolts = Math.max(0, simVolts);
         }
 
+        if (simVolts > 0) {
+            generatedTime += 1000; // Increment time by 1s (1000ms) for simulation polling interval
+        }
         totalGeneratedVoltage += simVolts * 0.01; // Just a dummy increment
 
-        processData(simVolts, totalGeneratedVoltage);
+        processData(simVolts, totalGeneratedVoltage, generatedTime);
     }
 
     // Start data polling
@@ -267,49 +319,14 @@ document.addEventListener('DOMContentLoaded', () => {
             generateSimulationData(); // Initial call
         } else {
             // Start real fetching
-            fetchInterval = setInterval(fetchEspData, 2000);
-            fetchEspData(); // Initial call
+            setupFirebaseListeners();
         }
     }
 
     // Event Listeners
-    updateIpBtn.addEventListener('click', () => {
-        const newIp = espIpInput.value.trim();
-        if (newIp) {
-            espIp = newIp;
-            isSimulationMode = false;
-            toggleSimBtn.classList.remove('active');
-
-            // Reset fields
-            currentVoltageEl.textContent = '0.00';
-            totalVoltageEl.textContent = '0.00';
-
-            voltageChart.data.labels = Array(maxDataPoints).fill('');
-            voltageChart.data.datasets[0].data = Array(maxDataPoints).fill(null);
-            voltageChart.update();
-
-            startDataStream();
-        }
-    });
-
-    toggleSimBtn.addEventListener('click', () => {
-        isSimulationMode = !isSimulationMode;
-
-        if (isSimulationMode) {
-            toggleSimBtn.classList.add('active');
-        } else {
-            toggleSimBtn.classList.remove('active');
-        }
-
-        startDataStream();
-    });
-
-    // Handle user pressing enter in IP input
-    espIpInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            updateIpBtn.click();
-        }
-    });
+    // Hide unused IP config row in index.html (or just let it remain inactive if desired)
+    // Actually, we can just comment out the event listeners as it's not used in Firebase mode.
+    espIpInput.parentElement.style.display = 'none';
 
     // Initialize
     if (isSimulationMode) {

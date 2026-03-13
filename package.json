@@ -1,0 +1,24 @@
+{
+  "name": "shawishwa_project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thusaraka1/piezo-voltage-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thusaraka1/piezo-voltage-dashboard/issues"
+  },
+  "homepage": "https://github.com/thusaraka1/piezo-voltage-dashboard#readme",
+  "type": "module",
+  "dependencies": {
+    "firebase": "^12.10.0"
+  }
+}

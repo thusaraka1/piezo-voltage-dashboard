@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,22 +9,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="dashboard-container">
         <header>
-            <h1 class="glow-text">Voltage Monitoring Dashboard</h1>
-            <p class="subtitle">Live web-based monitoring</p>
+            <h1 class="glow-text">Live Voltage Monitoring Dashboard</h1>
         </header>
 
         <main>
             <div class="cards-wrapper">
                 <div class="card stat-card">
                     <div class="card-content">
-                        <h2>Voltage</h2>
+                        <h2>Current Voltage</h2>
                         <div class="value-container">
-                            <span id="currentVoltage" class="value">0.00</span>
+                            <span id="currentVoltage" class="value">0.000</span>
+                            <span class="unit">V</span>
+                        </div>
+                    </div>
+                    <div class="glow-effect"></div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-content">
+                        <h2>Peak Voltage</h2>
+                        <div class="value-container">
+                            <span id="peakVoltage" class="value">0.000</span>
                             <span class="unit">V</span>
                         </div>
                     </div>
@@ -34,8 +50,19 @@
                     <div class="card-content">
                         <h2>Total Generated Voltage</h2>
                         <div class="value-container">
-                            <span id="totalVoltage" class="value">0.00</span>
+                            <span id="totalVoltage" class="value">0.000</span>
                             <span class="unit">V</span>
+                        </div>
+                    </div>
+                    <div class="glow-effect"></div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-content">
+                        <h2>Generated Time</h2>
+                        <div class="value-container">
+                            <span id="generatedTime" class="value">0</span>
+                            <span class="unit">ms</span>
                         </div>
                     </div>
                     <div class="glow-effect"></div>
@@ -50,11 +77,11 @@
                         <span id="connectionStatus">Connecting...</span>
                     </div>
                 </div>
-                
+
                 <div class="chart-container">
                     <canvas id="voltageChart"></canvas>
                 </div>
-                
+
                 <div class="card-footer">
                     <p id="footerStatusText">Initializing connection to ESP32...</p>
                 </div>
@@ -74,4 +101,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
